@@ -350,6 +350,8 @@
        base *= Math.pow(4, extra);
     }
 
+    if(key==="nirvana") return Math.floor(base);
+
     const disc = Math.max(
         0.5,
         1 - (prestige.costReduction + udoukaUp.tranquility.level * udoukaUp.tranquility.per)
