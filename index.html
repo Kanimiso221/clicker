@@ -226,7 +226,7 @@
     copyScripture:{name:"写経",inc:{click:+1},baseCost:150,level:0,description:"クリック+1徳"},
     meditation:{name:"瞑想",inc:{auto:+3},baseCost:800,level:0,description:"毎秒+3徳"},
     alms:{name:"お布施",mult:{cost:0.95},baseCost:2000,level:0,description:"全コスト5%割引"},
-    enlightenment:{name:"悟りの境地",special:"prestigeGate",inc:{auto:+25},baseCost:15000,level:0,description:"毎秒+25徳 / スコア金色",special:"gold"},
+    enlightenment:{name:"悟りの境地",special:"prestigeGate",inc:{auto:+25},baseCost:15000,level:0,description:"毎秒+25徳 / スコア金色"},
     incense:{name:"香供養",inc:{auto:+6},baseCost:4000,level:0,description:"毎秒+6徳"},
     lotus:{name:"蓮華供養",inc:{click:+3},baseCost:6500,level:0,description:"クリック+3徳"},
     bell:{name:"梵鐘寄進",inc:{auto:+12},baseCost:9000,level:0,description:"毎秒+12徳"},
@@ -339,10 +339,22 @@
   const clickFlat=()=>prestige.extraClick+udoukaUp.compassion.level*udoukaUp.compassion.per;
   function effClick(){ return (clickValue*clickMult()+clickFlat())*totalMult(); }
   function effAuto (){ return (autoIncrement*autoMult())*totalMult(); }
-  function upgradeCost(k){
-    const base=upgrades[k].baseCost*Math.pow(1.15,upgrades[k].level)*costMultiplier;
-    const disc=Math.max(0.5,1-(prestige.costReduction+udoukaUp.tranquility.level*udoukaUp.tranquility.per));
-    return Math.floor(base*disc);
+  function upgradeCost(key){
+    const u = upgrades[key];
+
+    let base = u.baseCost * Math.pow(1.15, u.level) * (key === "nirvana" ? 1 : costMultiplier);
+
+    if(key==="enlightenment" && u.level>=10){
+       const extra = u.level-9;
+       base *= Math.pow(4, extra);
+    }
+
+    const disc = Math.max(
+        0.5,
+        1 - (prestige.costReduction +
+          udoukaUp.tranquility.level * udoukaUp.tranquility.per)
+    );
+    return Math.floor(base * disc);
   }
   const udCost=k=>Math.floor(udoukaUp[k].base*Math.pow(1.5,udoukaUp[k].level));
 
