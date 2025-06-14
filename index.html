@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang = "ja">
+<head>
+  <meta charset = "UTF-8">
+  <meta name = "viewport" content = "width=device-width, initial-scale=1">
+  <link rel = "icon"       type = "image/x-icon" href = "image/toku.ico">
+  <title>徳クリッカー</title>
+
+  <!-- Google Fonts -->
+  <link href = "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel = "stylesheet">
+
+  <style>
+    /* ====== ベース ====== */
+    * { box-sizing:border-box; }
+    body{
+      margin:0; padding:0;
+      font-family:'Noto Sans JP',system-ui,sans-serif;
+      text-align:center;
+      background:linear-gradient(135deg,#f4f0e6 0%,#d9cfc3 100%);
+      --card-bg:#fff;
+      --accent:#8c6f4e;
+    }
+    h1{margin:1.2rem 0 .8rem;font-size:2.5rem;color:#555;user-select:none}
+
+    /* ====== コンテナ ====== */
+    #game-container{max-width:820px;margin:auto;padding:0 1rem 4rem;animation:fadein .8s}
+    @keyframes fadein{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+
+    /* ====== 説明カード ====== */
+    .card{
+      background:var(--card-bg);border-radius:12px;border:1px solid #e0d6c6;
+      box-shadow:0 4px 8px rgba(0,0,0,.06);padding:1rem;margin:1.2rem auto;
+    }
+    #instructions ul{margin:0;padding-left:1.2rem}
+    #instructions li{line-height:1.5em}
+
+    /* ====== スコア & クリック ====== */
+    #score-container{font-size:2rem;margin:1.2rem 0}
+    #score{font-weight:700;transition:color .4s}
+    .high-karma{color:#d4af37}
+
+    #clickButton{
+      width:min(42vw,190px);height:min(42vw,190px);
+      border-radius:50%;border:none;cursor:pointer;
+      background:radial-gradient(circle at 30% 30%,#fff8e6 0%,#c7a774 60%);
+      box-shadow:0 6px 14px rgba(0,0,0,.16);font-size:1.1rem;font-weight:700;color:#4b3e28;
+      transition:transform .12s cubic-bezier(.4,0,.2,1);
+    }
+    #clickButton:active{transform:scale(.9)}
+    #clickButton::after{/*光ハイライト*/
+      content:"";position:absolute;top:8%;left:18%;
+      width:64%;height:64%;border-radius:50%;
+      background:radial-gradient(circle,#ffffff80 0%,#ffffff00 60%);
+      pointer-events:none;transition:opacity .3s;
+    }
+    #clickButton:active::after{opacity:0}
+
+    /* ====== アップグレード ====== */
+    #upgrades-container h2{margin:.6rem 0}
+    .upgrade,.udouka-upgrade,.gacha-btn{
+      display:block;margin:.45rem auto;padding:.75rem 1rem;
+      width:90%;max-width:340px;border:none;border-radius:6px;
+      font-size:1rem;font-weight:600;cursor:pointer;
+      background:var(--accent);color:#fff;transition:filter .2s,transform .1s;
+    }
+    .upgrade:hover,.udouka-upgrade:hover,.gacha-btn:hover{filter:brightness(.9)}
+    .upgrade:active,.udouka-upgrade:active,.gacha-btn:active{transform:scale(.96)}
+    .gacha-btn{background:#e67e22}
+    .gacha-btn:hover{filter:brightness(.92)}
+
+    /* ====== トグル & スライダー ====== */
+    #bgmToggle{margin-top:1rem;padding:.5rem 1.2rem;border:none;border-radius:6px;
+      background:#4a90e2;color:#fff;font-size:1rem;cursor:pointer;transition:filter .2s}
+    #bgmToggle:hover{filter:brightness(.9)}
+    #volWrap{margin-top:1rem;text-align:center}
+    #volWrap input{width:180px;accent-color:#4a90e2}
+
+    /* ====== セクションカード ====== */
+    #gacha-container,#reincarnation-container,#udouka-container{margin-top:1.5rem}
+    #gachaResult{margin-top:.8rem;font-size:1.25rem;font-weight:700;min-height:1.4em}
+
+    /* ====== テーブル ====== */
+    .prestige{width:100%;border-collapse:collapse;font-size:.9rem}
+    .prestige th,.prestige td{padding:.25rem;border-bottom:1px solid #ddd;text-align:left}
+    .prestige th{width:50%}
+
+    button:disabled,
+    button.disabled{
+      filter:grayscale(1) brightness(.6);
+      cursor:not-allowed;
+    }
+
+    #reincarnateButton{
+      background:linear-gradient(135deg,#ff6d6d 0%,#c0392b 100%);
+      box-shadow:0 4px 8px rgba(0,0,0,.25);
+      color:#fff;font-weight:700;letter-spacing:.05em;
+      transition:transform .15s,filter .2s;
+    }
+    #reincarnateButton:hover{filter:brightness(1.1)}
+    #reincarnateButton:active{transform:scale(.96)}
+
+    @media(max-width: 480px){
+      h1{font-size:2rem}
+      #clickButton{font-size:.9rem}
+    }
+    @media (min-width: 780px) {
+      #upgradeButtons,
+      #udoukaButtons,
+      #gachaBtns{
+        display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+        gap:0.6rem;
+        place-items:center;
+      }
+      .upgrade,
+      .udouka-upgrade,
+      .gacha-btn{
+        width:100%;
+    }
+
+    /* === ポップアップ === */
+    .popup-overlay[hidden]{display:none !important;}
+    .popup-overlay{
+      position:fixed; inset:0; background:rgba(0,0,0,.45);
+      display:flex; justify-content:center; align-items:center;
+      backdrop-filter:blur(4px); z-index:1000;
+      animation:fadein .25s;
+    }
+    .popup-card{
+      background:#fff; border-radius:12px; padding:1.2rem 1.5rem;
+      max-width:320px; width:88%; text-align:center;
+      box-shadow:0 8px 24px rgba(0,0,0,.25); animation:popup .25s;
+    }
+    @keyframes popup{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+    .popup-card button{
+      margin:.4rem .25rem; padding:.5rem 1.2rem; border:none; border-radius:6px;
+      font-weight:600; cursor:pointer; transition:filter .15s;
+    }
+    .popup-card button.ok     {background:#4a90e2;color:#fff}
+    .popup-card button.cancel {background:#ccc;color:#333}
+    .popup-card button:hover  {filter:brightness(.9)}
+    }
+  </style>
+</head>
+<body>
+  <div id = "game-container">
+    <h1>徳クリッカー</h1>
+
+    <!-- 説明 -->
+    <div id = "instructions" class = "card">
+      <p>【ゲームの遊び方】</p>
+      <ul>
+        <li>「徳を積む」で徳を獲得。</li>
+        <li>徳を使ってアップグレードを購入し、生産効率を強化。</li>
+        <li>ガチャは複数のレベルがあり、賭け徳が多いほどリターンも大。</li>
+        <li>「悟りの境地」Lv10で転生が解放。転生すると永久ボーナスと<strong>優曇華ポイント</strong>！</li>
+      </ul>
+    </div>
+
+    <!-- スコア & クリック -->
+    <div id = "score-container"><span id = "score">0</span> 徳</div>
+    <button id = "clickButton">徳を積む</button>
+
+    <!-- 通常アップグレード -->
+    <div id = "upgrades-container" class = "card">
+      <h2>アップグレード</h2>
+      <p style = "margin:.2rem 0 1rem;font-size:.9rem">ボタンにホバーで効果詳細を表示</p>
+      <div id = "upgradeButtons"></div>
+    </div>
+
+    <!-- BGM トグル -->
+    <button id = "bgmToggle">BGM: On</button>
+
+    <!-- ガチャ -->
+    <div id = "gacha-container" class="card">
+      <h2>ガチャ</h2>
+      <p style = "font-size:.9rem;margin-top:0">任意のレベルを選んで賭け徳 &amp; ボーナスを狙おう！</p>
+      <!-- JS が 5 段階ボタンをここへ注入 -->
+      <div id = "gachaResult"></div>
+    </div>
+
+    <!-- 転生 -->
+    <div id = "reincarnation-container" class="card">
+      <h2>転生</h2>
+      <p style = "font-size:.9rem">転生すると進行はリセットされますが、転生ボーナスと<strong>優曇華ポイント</strong>を獲得できます。</p>
+      <button id = "reincarnateButton">転生する</button>
+      <details id = "prestigeCard" style = "margin-top:.6rem">
+        <summary style = "cursor:pointer;font-weight:600">転生ボーナス</summary>
+        <table class = "prestige"><tbody id = "prestigeTable"></tbody></table>
+      </details>
+    </div>
+
+    <!-- 優曇華アップグレード -->
+    <div id = "udouka-container" class = "card">
+      <h2>優曇華アップグレード</h2>
+      <p style = "font-size:.9rem;margin:.2rem 0 1rem">転生で得たポイントを投資して恒久的パワーアップ！</p>
+      <p style ="margin:.4rem 0">現在の優曇華ポイント: <span id = "udoukaPointsDisplay">0</span></p>
+      <div id = "udoukaButtons"></div>
+    </div>
+  </div>
+
+  <!-- ========== 汎用ポップアップ ========== -->
+  <div id = "popupOverlay" class = "popup-overlay" hidden>
+    <div class = "popup-card">
+      <p id = "popupMessage"></p>
+      <div id = "popupButtons"></div>
+    </div>
+  </div>
+
+  <!-- Audio -->
+  <audio id = "bgm"              src = "Audio/bgm.mp3" loop></audio>
+  <audio id = "clickSound"       src = "Audio/click.mp3"></audio>
+  <audio id = "upgradeSound"     src = "Audio/upgrade.mp3"></audio>
+  <audio id = "gachaSound"       src = "Audio/gacha.mp3"></audio>
+  <audio id = "reincarnateSound" src = "Audio/reincarnate.mp3"></audio>
+
+  <script>
+  /* ---------- 基本ステート ---------- */
+  let score = 0, clickValue = 1, autoIncrement = 0;
+  let lastUpdate = Date.now(), costMultiplier = 1.0;
+
+  /* ---------- アップグレード定義（20種） ---------- */
+  const upgrades = { /* ←すべて level:0 付き */ };
+  Object.assign(upgrades,{
+    zen:{name:"座禅",inc:{auto:+0.5},baseCost:100,level:0,description:"毎秒+0.5徳"},
+    copyScripture:{name:"写経",inc:{click:+1},baseCost:150,level:0,description:"クリック+1徳"},
+    meditation:{name:"瞑想",inc:{auto:+3},baseCost:800,level:0,description:"毎秒+3徳"},
+    alms:{name:"お布施",mult:{cost:0.95},baseCost:2000,level:0,description:"全コスト5%割引"},
+    enlightenment:{name:"悟りの境地",special:"prestigeGate",inc:{auto:+25},baseCost:15000,level:0,description:"毎秒+25徳 / スコア金色",special:"gold"},
+    incense:{name:"香供養",inc:{auto:+6},baseCost:4000,level:0,description:"毎秒+6徳"},
+    lotus:{name:"蓮華供養",inc:{click:+3},baseCost:6500,level:0,description:"クリック+3徳"},
+    bell:{name:"梵鐘寄進",inc:{auto:+12},baseCost:9000,level:0,description:"毎秒+12徳"},
+    sutraChant:{name:"読経会",inc:{auto:+18},baseCost:12000,level:0,description:"毎秒+18徳"},
+    pilgrimage:{name:"巡礼",inc:{click:+6},baseCost:15000,level:0,description:"クリック+6徳"},
+    pagoda:{name:"五重塔建立",inc:{auto:+60},baseCost:50000,level:0,description:"毎秒+60徳"},
+    lantern:{name:"灯籠献灯",inc:{auto:+30},baseCost:30000,level:0,description:"毎秒+30徳"},
+    scriptureHall:{name:"経蔵寄進",inc:{auto:+45},baseCost:38000,level:0,description:"毎秒+45徳"},
+    mandala:{name:"曼荼羅奉納",inc:{click:+12},baseCost:42000,level:0,description:"クリック+12徳"},
+    sermon:{name:"法話布教",mult:{click:1.10},baseCost:47000,level:0,description:"クリック倍率+10%"},
+    sutraCopyMarathon:{name:"百万遍写経",inc:{auto:+120},baseCost:80000,level:0,description:"毎秒+120徳"},
+    templeRestoration:{name:"古寺修復",inc:{auto:+240},baseCost:150000,level:0,description:"毎秒+240徳"},
+    freeKitchen:{name:"施餓鬼供養",mult:{auto:1.15},baseCost:200000,level:0,description:"自動増加倍率+15%"},
+    relic:{name:"仏舎利寄進",mult:{total:1.05},baseCost:250000,level:0,description:"全体生産倍率+5%"},
+    nirvana:{name:"涅槃覚悟",inc:{auto:+600},baseCost:1_500_000,level:0,description:"桁違いの自動増加"}
+  });
+
+  /* ---------- Prestige ---------- */
+  let prestige = {clickBonus:0,autoBonus:0,costReduction:0,extraClick:0,gachaBonus:0,totalProduction:0};
+
+  /* ---------- 優曇華 (10種) ---------- */
+  const udoukaUp = { /* level:0 & description 含む */ };
+  Object.assign(udoukaUp,{
+    light:{name:"迅速の光",type:"click%",per:0.10,base:5,level:0,desc:"クリック倍率+10%/Lv"},
+    fountain:{name:"永続の泉",type:"auto%",per:0.10,base:5,level:0,desc:"自動倍率+10%/Lv"},
+    revelation:{name:"天啓の声",type:"gacha%",per:0.02,base:5,level:0,desc:"ガチャ倍率+2%/Lv"},
+    tranquility:{name:"静寂の心",type:"cost%",per:0.005,base:5,level:0,desc:"コスト割引0.5%/Lv"},
+    compassion:{name:"慈悲の抱擁",type:"click+",per:1,base:5,level:0,desc:"クリック+1徳/Lv"},
+    harmony:{name:"究極の調和",type:"total%",per:0.005,base:5,level:0,desc:"全倍率+0.5%/Lv"},
+    wisdom:{name:"叡智の光輪",type:"offline%",per:0.05,base:10,level:0,desc:"オフライン倍率+5%/Lv"},
+    mercy:{name:"無量の慈悲",type:"gacha+",per:20,base:10,level:0,desc:"ガチャ固定+20徳/Lv"},
+    vow:{name:"菩薩の誓願",type:"prestige%",per:0.05,base:15,level:0,desc:"転生倍率+5%/Lv"},
+    voidness:{name:"空観の悟り",type:"all%",per:0.01,base:20,level:0,desc:"全倍率+1%/Lv"}
+  });
+  let udoukaPts = 0;
+
+  /* ---------- ガチャ (5段階) ---------- */
+  const gachaTiers = [
+    {key:"g1",label:"小ガチャ", cost:100,   factor:1},
+    {key:"g2",label:"並ガチャ", cost:500,   factor:5},
+    {key:"g3",label:"大ガチャ", cost:2500,  factor:25},
+    {key:"g4",label:"極ガチャ", cost:12500, factor:125},
+    {key:"g5",label:"悟りガチャ",cost:50000, factor:250}
+  ];
+
+  /* ---------- 音量設定 ---------- */
+  const settingsKey="karmaSettings";
+  let settings={bgmVol:0.5,seVol:0.8,bgmOn:true};
+  try{ settings=Object.assign(settings,JSON.parse(localStorage.getItem(settingsKey)||"{}")); }catch{}
+
+  const $ = s=>document.querySelector(s), $$ = s=>document.querySelectorAll(s);
+
+  /* ---------- 効果適用ユーティリティ ---------- */
+  function applyUpgrade(k){
+    const u=upgrades[k];
+    if(u.inc){ clickValue+=u.inc.click||0; autoIncrement+=u.inc.auto||0; }
+    if(u.mult){
+      if(u.mult.click) prestige.clickBonus+=(u.mult.click-1);
+      if(u.mult.auto)  prestige.autoBonus +=(u.mult.auto-1);
+      if(u.mult.cost)  costMultiplier*=u.mult.cost;
+      if(u.mult.total) prestige.totalProduction+=(u.mult.total-1);
+    }
+    if(u.special==="gold") $("#score").classList.add("high-karma");
+  }
+
+  /* ---------- ポップアップユーティリティ ---------- */
+  function popup(msg,{confirm=false}={}){                   // returns Promise<boolean>
+    const overlay = $("#popupOverlay");
+    const msgBox  = $("#popupMessage");
+    const btnBox  = $("#popupButtons");
+
+    msgBox.textContent = msg;
+    btnBox.innerHTML   = "";                                // 既存ボタンをクリア
+
+    return new Promise(resolve=>{
+      /* OK ボタン */
+      const ok = document.createElement("button");
+      ok.className = "ok";
+      ok.textContent = "OK";
+      btnBox.appendChild(ok);
+
+      /* キャンセルが必要なら */
+      let cancel=null;
+      if(confirm){
+        cancel = document.createElement("button");
+        cancel.className = "cancel";
+        cancel.textContent = "キャンセル";
+        btnBox.appendChild(cancel);
+      }
+
+      /* 閉じる共通処理 */
+      const close = val=>{
+        overlay.setAttribute("hidden","");     // hidden 属性を付与
+        resolve(val);
+      };
+
+      ok.addEventListener("click",()=>close(true));
+      if(cancel) cancel.addEventListener("click",()=>close(false));
+
+      /* 表示 */
+      overlay.removeAttribute("hidden");
+      ok.focus();                              // キーボード操作も可
+    });
+  }
+
+  /* ---------- 計算系 ---------- */
+  const totalMult=()=>1+prestige.totalProduction+udoukaUp.harmony.level*udoukaUp.harmony.per;
+  const clickMult=()=>1+prestige.clickBonus+udoukaUp.light.level*udoukaUp.light.per;
+  const autoMult =()=>1+prestige.autoBonus +udoukaUp.fountain.level*udoukaUp.fountain.per;
+  const clickFlat=()=>prestige.extraClick+udoukaUp.compassion.level*udoukaUp.compassion.per;
+  function effClick(){ return (clickValue*clickMult()+clickFlat())*totalMult(); }
+  function effAuto (){ return (autoIncrement*autoMult())*totalMult(); }
+  function upgradeCost(k){
+    const base=upgrades[k].baseCost*Math.pow(1.15,upgrades[k].level)*costMultiplier;
+    const disc=Math.max(0.5,1-(prestige.costReduction+udoukaUp.tranquility.level*udoukaUp.tranquility.per));
+    return Math.floor(base*disc);
+  }
+  const udCost=k=>Math.floor(udoukaUp[k].base*Math.pow(1.5,udoukaUp[k].level));
+
+  /* ---------- セーブ系 ---------- */
+  function saveState(){
+    localStorage.setItem("karmaGameState",JSON.stringify({
+      score,clickValue,autoIncrement,costMultiplier,lastOnline:Date.now(),
+      upgrades:Object.fromEntries(Object.entries(upgrades).map(([k,v])=>[k,{lvl:v.level}]))
+    }));
+  }
+  function loadState(){
+    const raw=localStorage.getItem("karmaGameState"); if(!raw) return;
+    try{
+      const st=JSON.parse(raw);
+      score=st.score||0; clickValue=st.clickValue||1; autoIncrement=st.autoIncrement||0; costMultiplier=st.costMultiplier||1;
+      for(const k in upgrades){ upgrades[k].level = st.upgrades?.[k]?.lvl||0; for(let i=0;i<upgrades[k].level;i++)applyUpgrade(k);}
+      if(st.lastOnline){
+        const off=(Date.now()-st.lastOnline)/1000, gain=effAuto()*off;
+        score+=gain; popup(`おかえり！${format(off)}放置で${Math.floor(gain)}徳`);
+      }
+    }catch(e){console.error(e);}
+  }
+  setInterval(saveState,1000);
+
+  function savePrestige(){localStorage.setItem("karmaPrestige",JSON.stringify(prestige));}
+  function loadPrestige(){try{Object.assign(prestige,JSON.parse(localStorage.getItem("karmaPrestige")||"{}"));}catch{}}
+
+  function saveUdouka(){
+    localStorage.setItem("karmaUdouka",JSON.stringify({
+      pts:udoukaPts,up:Object.fromEntries(Object.entries(udoukaUp).map(([k,v])=>[k,{lvl:v.level}]))
+    }));
+  }
+  function loadUdouka(){
+    try{
+      const st=JSON.parse(localStorage.getItem("karmaUdouka")||"null"); if(!st)return;
+      udoukaPts=st.pts||0;
+      for(const k in udoukaUp) udoukaUp[k].level=st.up?.[k]?.lvl||0;
+    }catch{}
+  }
+
+  /* ---------- UIビルド ---------- */
+  function buildGachaButtons(){
+    const cont=$("#gacha-container");
+    const btnArea=document.createElement("div"); btnArea.id="gachaBtns"; cont.appendChild(btnArea);
+    gachaTiers.forEach(t=>{
+      const b=document.createElement("button");
+      b.className="gacha-btn"; b.dataset.tier=t.key;
+      b.textContent=`${t.label} (${t.cost}徳)`;
+      btnArea.appendChild(b);
+    });
+  }
+  function buildVolumeSliders(){
+    const wrap=document.createElement("div"); wrap.id="volWrap"; wrap.innerHTML=`
+      <p><label>BGM: <input id="bgmVol" type="range" min="0" max="1" step="0.01"></label></p>
+      <p><label>SE : <input id="seVol"  type="range" min="0" max="1" step="0.01"></label></p>`;
+    $("#game-container").appendChild(wrap);
+  }
+  /* ===== ボタンを動的生成 ===== */
+  function buildUpgradeButtons(){
+    const box = document.getElementById("upgradeButtons");
+    for(const key in upgrades){
+      const b = document.createElement("button");
+      b.className = "upgrade";
+      b.dataset.upgrade = key;
+      box.appendChild(b);
+    }
+  }
+  function buildUdoukaButtons(){
+    const box = document.getElementById("udoukaButtons");
+    for(const key in udoukaUp){
+      const b = document.createElement("button");
+      b.className = "udouka-upgrade";
+      b.dataset.upgrade = key;
+      box.appendChild(b);
+    }
+  }
+  /* ---------- UI更新 ---------- */
+  function updUpBtns(){
+    $$(".upgrade").forEach(b=>{
+      const k       = b.dataset.upgrade;
+      b.textContent = `${upgrades[k].name}(Lv:${upgrades[k].level}) - ${upgradeCost(k)}徳`;
+      b.title       = upgrades[k].description;
+    });
+  }
+  function updUdBtns(){
+    $("#udoukaPointsDisplay").textContent=udoukaPts;
+    $$(".udouka-upgrade").forEach(b=>{
+      const k       = b.dataset.upgrade;
+      b.textContent = `${udoukaUp[k].name}(Lv:${udoukaUp[k].level}) - ${udCost(k)}pt`;
+      b.title       = udoukaUp[k].desc;
+    });
+  }
+  function updPrestige(){
+    const rows=[
+      ["クリック倍率",(1+prestige.clickBonus).toFixed(2)+"×"],
+      ["自動増加倍率",(1+prestige.autoBonus).toFixed(2)+"×"],
+      ["全体生産倍率",(1+prestige.totalProduction).toFixed(2)+"×"],
+      ["アップグレード割引",(prestige.costReduction*100).toFixed(1)+"%↓"],
+      ["クリック固定加算",prestige.extraClick+"徳"],
+      ["ガチャ倍率",(1+prestige.gachaBonus).toFixed(2)+"×"]
+    ];
+    $("#prestigeTable").innerHTML=rows.map(r=>`<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join("");
+  }
+  function updScore(){ $("#score").textContent=Math.floor(score); }
+  const format=s=>{const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return(h?`${h}時間`:"")+(m?`${m}分`:"")+(h||m?"":"数秒");};
+
+  /* ---------- 初期化 ---------- */
+  window.addEventListener("load",()=>{
+    buildUpgradeButtons();
+    buildUdoukaButtons();
+    buildGachaButtons(); 
+    buildVolumeSliders();
+    /* イベント登録 */
+    ["click","touchstart"].forEach(ev=>$("#clickButton").addEventListener(ev,()=>{
+      $("#clickSound").volume=settings.seVol; $("#clickSound").currentTime=0; $("#clickSound").play();
+      score+=effClick(); updScore(); }));
+    $$(".upgrade").forEach(b=>b.addEventListener("click",()=>{
+      const k=b.dataset.upgrade,c=upgradeCost(k);
+      if(score<c)return popup("徳が足りません"); score-=c; upgrades[k].level++; applyUpgrade(k);
+      updScore(); updUpBtns(); $("#upgradeSound").volume=settings.seVol; $("#upgradeSound").currentTime=0; $("#upgradeSound").play(); }));
+    $$(".udouka-upgrade").forEach(b=>b.addEventListener("click",()=>{
+      const k=b.dataset.upgrade,c=udCost(k);
+      if(udoukaPts<c)return popup("ポイント不足"); udoukaPts-=c; udoukaUp[k].level++; saveUdouka();
+      updUdBtns(); $("#upgradeSound").volume=settings.seVol; $("#upgradeSound").currentTime=0; $("#upgradeSound").play(); }));
+    /* ガチャ */
+    $("#gacha-container").addEventListener("click",e=>{
+      const btn=e.target.closest(".gacha-btn"); if(!btn)return;
+      const tier=gachaTiers.find(t=>t.key===btn.dataset.tier);
+      if(score<tier.cost) return popup("徳が足りません！");
+      score-=tier.cost;
+      const r=Math.random()*100; let base;
+      if(r<=5)base=300; else if(r<=20)base=150; else if(r<=50)base=50; else base=0;
+      let bonus=base*tier.factor;
+      const mult=1+prestige.gachaBonus+udoukaUp.revelation.level*udoukaUp.revelation.per;
+      const flat=udoukaUp.mercy.level*udoukaUp.mercy.per;
+      bonus=Math.floor(bonus*mult)+flat; score+=bonus;
+      $("#gachaResult").textContent=`[${tier.label}] → ${bonus?`ボーナス${bonus}徳！`:"残念！"}`;
+      $("#gachaSound").volume=settings.seVol; $("#gachaSound").currentTime=0; $("#gachaSound").play();
+      updScore(); });
+    /* 転生 */
+    $("#reincarnateButton").addEventListener("click",async ()=>{
+      if(upgrades.enlightenment.level<10){ await popup("『悟りの境地』Lv10で転生可能"); return; }
+      if(!(await popup("転生しますか？進行リセット＆優曇華+10pt",{confirm:true}))) return;
+      prestige.clickBonus+=.10; prestige.autoBonus+=.05; prestige.costReduction+=.02;
+      prestige.extraClick+=1; prestige.gachaBonus+=.05; prestige.totalProduction+=.01;
+      savePrestige(); udoukaPts+=10; saveUdouka();
+      $("#reincarnateSound").volume=settings.seVol; $("#reincarnateSound").currentTime=0; $("#reincarnateSound").play();
+      score=0; clickValue=1; autoIncrement=0; costMultiplier=1.0;
+      for(const k in upgrades) upgrades[k].level=0; $("#score").classList.remove("high-karma");
+      localStorage.removeItem("karmaGameState");
+      updUpBtns(); updUdBtns(); updPrestige(); updScore(); popup("転生完了！");
+    });
+    /* ボリュームスライダー */
+    $("#bgmVol").value=settings.bgmVol; $("#seVol").value=settings.seVol;
+    const  audios=[...$$("audio")];
+    audios.forEach(a=>a.volume=a.id==="bgm"?settings.bgmVol:settings.seVol);
+    $("#bgmVol").addEventListener("input",e=>{
+      settings.bgmVol=parseFloat(e.target.value); $("#bgm").volume=settings.bgmVol; localStorage.setItem(settingsKey,JSON.stringify(settings));});
+    $("#seVol").addEventListener("input",e=>{
+      settings.seVol=parseFloat(e.target.value); audios.forEach(a=>a.id!=="bgm"&&(a.volume=settings.seVol));
+      localStorage.setItem(settingsKey,JSON.stringify(settings));});
+    /* BGM ON/OFF ボタン */
+    $("#bgmToggle").addEventListener("click",function(){
+      const bgm=$("#bgm"); 
+      if(bgm.paused){bgm.play(); 
+        this.textContent="BGM: On";
+        settings.bgmOn = true;
+      }
+      else{bgm.pause();this.textContent="BGM: Off"; settings.bgmOn = false;}
+    localStorage.setItem(settingsKey,JSON.stringify(settings));});
+    const bgm = $("#bgm");
+    bgm.volume = settings.bgmVol;
+    if(settings.bgmOn){ bgm.play().catch(()=>{}); }
+    else { $("#bgmToggle").textContent = "BGM: Off"; }
+    /* オートループ */
+    setInterval(()=>{const now=Date.now(),dt=(now-lastUpdate)/1000;lastUpdate=now;score+=effAuto()*dt;updScore();},100);
+    /* ロード処理 */
+    loadPrestige(); loadUdouka(); loadState();
+    /* 元々存在するボタンの初期表示 */
+    updUpBtns(); updUdBtns(); updPrestige(); updScore();
+  });
+
+  </script>
+</body>
+</html>
